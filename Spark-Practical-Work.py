@@ -1,7 +1,7 @@
 # Import libraries
 from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, StringType, IntegerType
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DateType, TimestampType
 from pyspark.sql.functions import when, lit, col, length, concat_ws, substring, avg, desc, date_format, expr, format_string
 from pyspark.ml import Pipeline
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
@@ -30,7 +30,7 @@ def main():
     specific piece.
     '''
     def create_df(number = 10):
-        def get_csv_path(csv_path = ["dataverse_files/year-csv/1987.csv"]):
+        def get_csv_path(csv_path = ["drive/MyDrive/Pyspark/practical work/data/1987.csv"]):
             # Example of input arguments
             # (["dataverse_files/year-csv/1987.csv","dataverse_files/year-csv/1988.csv","dataverse_files/year-csv/1989.csv" \
             #,"dataverse_files/year-csv/1990.csv","dataverse_files/year-csv/1991.csv","dataverse_files/year-csv/1992.csv" \
@@ -44,7 +44,7 @@ def main():
             print(csv_path1)
             if(len(csv_path1) == 0):
                 print("No CSV file imput arguments (arg1,arg2,...,argn)")
-                print("Using default CSV file: dataverse_files/year-csv/1987.csv")
+                print("Using default CSV file: drive/MyDrive/Pyspark/practical work/data/1987.csv")
                 return csv_path
             return csv_path
         
@@ -91,15 +91,17 @@ def main():
             spark = SparkSession.builder.appName("Spark Practical Work").getOrCreate()
             return spark
 
-        
-        df = load_csv(spark = get_spark_session(), schema = get_schema(), csv_path = get_csv_path())
+        session = get_spark_session()
+        df = load_csv(spark = session, schema = get_schema(), csv_path = get_csv_path())
+
         print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<Dataframe>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
         df.show(number, truncate=False)
-        return df
+        return df, session
     
-    df = create_df(10)
+    df, session = create_df(10)
     
     
+
     '''
     2.-Forbidden variables
      The dataset consists of a single table with 29 columns. Some of these columns must not be
@@ -127,7 +129,7 @@ def main():
             - Time: Morning, Afternoon, Evening, Night
      '''
 
-    def initial_preprocessing(df, number = 10):
+    def initial_preprocessing(df, session, number = 10):
         def remove_forbidden_variables(df, number = 10):
             df = df.drop("ArrTime") \
                 .drop("ActualElapsedTime") \
@@ -148,7 +150,7 @@ def main():
             .distinct()
             return df
         
-        def convert_to_undestable_information(df):
+        def convert_to_understandable_information(df, session = session):
             def convert_to_week_days(df):
                 df = df.withColumn("DayOfWeek",
                    when(col("DayOfWeek") == 1, "Monday")
@@ -159,6 +161,41 @@ def main():
                    .when(col("DayOfWeek") == 6, "Saturday")
                    .when(col("DayOfWeek") == 7, "Sunday"))
                 return df
+
+            def update_schema(df,session = session):
+                '''Raúl: Update the schema applying the changes'''
+                original_columns = df.schema.fields
+
+                # Create a new schema
+                new_schema = StructType()
+
+                for field in original_columns:
+                    
+                    if field.name in ["Date","DayOfWeek","DepTime", "CRSDepTime", "CRSArrTime"]:
+                      new_schema.add(field.name, StringType())
+
+                    else:
+                    # For all other columns, keep the original data type
+                      new_schema.add(field)
+
+                # Apply the new schema to the DataFrame
+                df = session.createDataFrame(df.rdd, new_schema)
+                return df
+
+            '''Raúl: this is to be able to run the model'''
+            def index_data(df, string_columns = ["Time","Date","DayOfWeek","DepTime", "CRSDepTime", "CRSArrTime"]):
+              for column in string_columns:
+                indexer = StringIndexer(inputCol=column, outputCol=column+"_indexed", handleInvalid="skip")
+                df = indexer.fit(df).transform(df)
+              return df
+            
+            def impute_data(df):
+              imputer = Imputer(
+              inputCols=df.columns, 
+              outputCols=["{}_imputed".format(c) for c in df.columns])
+              model = imputer.fit(df)
+              df = model.transform(df)
+              return df
             
             def convert_to_date(df):
                 df = df.withColumn("Date",concat_ws("/",col("Year"),col("Month"),col("DayofMonth"))) \
@@ -178,6 +215,9 @@ def main():
             df = convert_to_week_days(df)
             df = convert_to_date(df)
             df = convert_to_time(df)
+            df = update_schema(df)
+            df = index_data(df)
+            df = impute_data(df)
             return df
         
         def repeated_values_columns(df):
@@ -202,13 +242,15 @@ def main():
         
         df = remove_forbidden_variables(df)
         df = filter_canceled(df)
-        df = convert_to_undestable_information(df)
+        df = convert_to_understandable_information(df)
         df = repeated_values_columns(df)
+   
         print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<Dataframe with initial preprocessing>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
         df.show(number, truncate=False)
         return df
     
-    df = initial_preprocessing(df, 40)
+    df = initial_preprocessing(df, session,  40)
+    ORIGINAL_COLUMNS = df.columns
     
     '''
     3.-Allowed variables
@@ -218,89 +260,85 @@ def main():
     4.-Target variable
     The target variable for the prediction model will be ArrDelay.
     '''
-     
-
-    
-
-
-
-
-    # 4. Dividir el conjunto de datos en entrenamiento y prueba
-    train_data, test_data = df.randomSplit([0.7, 0.3], seed=42)
-
-    def df_remove_null(df):
-        df = remove_null_rows_target(df)
-        df = remove_null_columns_and_impute(df)
-        return df
-    def remove_null_rows_target(df):
-        df = df.na.drop(subset=['ArrDelay']) # Drop rows with null values in ArrDelay column
-        return df
-    def remove_null_columns_and_impute(df):
-        total = df.count()
-        print("Total rows:", total)
-        for colum in df.columns:
-            not_null = df.filter(col(colum).isNotNull()).count() / total * 100
-            null_percentage = 100-not_null
-            print(colum, "null:", null_percentage, '%')
-            
-            if null_percentage > 50: # If more than 50% of the values are null, drop the column
-                print("-------------------------->> Drop column", colum)
-                df = df.drop(colum)
-            
-            elif null_percentage <= 50 and null_percentage > 0: # If less than 50% of the values are null (but exists nu), impute the column
-                print("-------------------------->> Imput column", colum)
-                imputer = Imputer(inputCols=[colum], outputCols=[colum])
-                imputer_model = imputer.fit(df)
-                df = imputer_model.transform(df)
-                print("NEW", colum, "null:", 100-(df.filter(col(colum).isNotNull()).count() / total * 100), '%')
-        return df
-
-    train_data = df_remove_null(train_data)
-    test_data = df_remove_null(test_data)
-    
-    
-    def get_string_columns(df):
-        return [name for name, dtype in df.dtypes if dtype == 'string']
-    def categorical_to_numeric(df, categorical_columns):
-        for column in categorical_columns:
-            string_indexer = StringIndexer(inputCol=column, outputCol=column+"Index")
-            df = string_indexer.fit(df).transform(df)
-            df = df.drop(column)
-        return df
+    '''
+    Creating the model and making predictions:
+    As our target variable is a continuous variables, we will use a linear regression model taking as input variables
+    all the allowed variables.
+    '''
 
 
-    train_data = categorical_to_numeric(train_data, get_string_columns(train_data))
-    test_data = categorical_to_numeric(test_data, get_string_columns(test_data))
-    train_data.show(1024, truncate=False)
+    def create_model_and_predict(df, input_cols:list(), target_var:str, train_percent=0.8, test_percent=0.2):
+  
+        def prepare_data(df, inputCols=input_cols, targetVar=target_var):
+          assembler = VectorAssembler(inputCols=inputCols, outputCol="features", handleInvalid = "keep")
+          output = assembler.transform(df)
+          finalized_data = output.select("features", targetVar)
+
+          def split(data, train_percent=0.8, test_percent=0.2):
+            if train_percent < 1 and test_percent < 1 and train_percent > 0 and test_percent > 0:
+                train_data, test_data = data.randomSplit([train_percent, test_percent])
+            else:
+                print("Invalid requested split percentages")
+            return train_data, test_data
+
+          print("<<DATA IS PROPERLY PREPARED WITH TARGET VARIABLE: "+str(target_var)+">>\n")
+          print("<<INPUT COLUMNS ARE: "+str(input_cols)+">>")
+          return split(finalized_data)
+
+        def try_model(targetVar, train_data, test_data):
+          lr = LinearRegression(featuresCol='features', labelCol=targetVar)
+
+          def fit(model, data):
+            fitted_model = model.fit(data)
+            print("<<Model has been fitted>>")
+            return fitted_model
+  
+          def predict(model, data):
+            predictions = model.transform(data)
+            return predictions
+          print(train_data)
+          fitted_lr = fit(lr, train_data)
+          predictions = predict(fitted_lr, test_data)
+          print("<<<Model has made predictions>>>")
+          return predictions, fitted_lr
+
+        def evaluate_model(predicted_values,target_var=target_var):
+          # Evaluate the model
+          evaluator = RegressionEvaluator(labelCol=target_var, predictionCol="prediction", metricName="rmse")
+          rmse = evaluator.evaluate(predicted_values)
+
+          print(f"Root Mean Squared Error (RMSE) on test data = {rmse}")
+          return rmse
+
+        
+
+        data_train, data_test = prepare_data(df, inputCols=input_cols, targetVar=target_var)
+        
+        print(data_train)
+        predictions, fitted_model = try_model(target_var, data_train, data_test)
+        rmse = evaluate_model(predicted_values = predictions)
+
+        return predictions, fitted_model, rmse
+    '''
+    Default target variable is ArrDelay. As data has already been processed,
+    the rest of the columns serve as input.
+    String columns are fed to the model indexed to avoid errors.
+    '''
+    STRING_COLUMNS = ["Date_indexed","Time_indexed","DayOfWeek_indexed","DepTime_indexed", "CRSDepTime_indexed", "CRSArrTime_indexed","Dest_indexed","Origin_indexed","UniqueCarrier_indexed"]
+    DEFAULT_TARGET = "ArrDelay"
+    INPUT_COLS_LIST = [col for col in df.columns if col != "ArrDelay" and col not in ORIGINAL_COLUMNS and col not in STRING_COLUMNS]
+
+    predicted_arr_delays, model, rmse = create_model_and_predict(df, input_cols=INPUT_COLS_LIST, target_var = DEFAULT_TARGET)
 
 
-    def vector_assembler(df):
-        feature_columns = df.drop("ArrDelay").columns
-        assembler = VectorAssembler(inputCols=feature_columns, outputCol="features")
-        df = assembler.transform(df)
-        return df, feature_columns
 
 
-    train_data, feature_columns = vector_assembler(train_data)
-    test_data, feature_columns = vector_assembler(test_data)
 
-    # 5. Aplicar la regresión lineal
-    lr = LinearRegression(featuresCol="features", labelCol="ArrDelay")
-    model = lr.fit(train_data)
 
-    # Imprimir coeficientes e intercepto
-    print("Coefficients: {}".format(model.coefficients))
-    print("Intercept: {}".format(model.intercept))
 
-    # Realizar predicciones en el conjunto de prueba
-    predictions = model.transform(test_data)
 
-    # Mostrar algunas predicciones
-    predictions.select("ArrDelay", "prediction", *feature_columns).show(10)
 
-    df_features = df.drop("ArrDelay")
-    columns_feature = df_features.columns
-    columns_target = ['ArrDelay']
+
 
 
 
