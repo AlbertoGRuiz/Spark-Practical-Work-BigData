@@ -1,5 +1,13 @@
 ## Big Data: Spark Practical Work
 
+
+### Group 15:
+- Alberto González Ruiz
+- Raúl Moldes Castillo
+- Diego Rafael Torrelles Rodríguez
+##
+
+  
 ### Introduction
 
 The objective of this work is to help students to put into practice the concepts learned during the theory lessons and to gain proficiency in the use of Spark and other related Big Data technologies. In this exercise, the students, organized in groups of 3 people, are required to develop a Spark application that creates a machine learning model for a real-world problem, using real-world data: Predicting the arrival delay of commercial flights.
