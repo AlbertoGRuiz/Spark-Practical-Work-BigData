@@ -188,13 +188,13 @@ def main():
                 return df
             
             def convert_to_time(df, list_colums_time = ["DepTime", "CRSDepTime", "CRSArrTime"]):
-                df = df.withColumn("Temporal", format_string("%02d:%02d", (col("DepTime") / 100).cast("int"), (col("DepTime") % 100).cast("int")))
                 for colum in list_colums_time:
+                    df = df.withColumn("Temporal", format_string("%02d:%02d", (col(colum) / 100).cast("int"), (col(colum) % 100).cast("int")))
                     df = df.withColumn(colum, when((col("Temporal") > "06:00") & (col("Temporal") < "12:00") & (col("Temporal") >= "05:00") , "Morning")
                                 .when((col("Temporal") > "12:00") & (col("Temporal") < "18:00"), "Afternoon")
                                 .when((col("Temporal") > "17:00") & (col("Temporal") < "00:00"), "Evening")
                                 .when((col("Temporal") > "17:00") & (col("Temporal") < "05:00"), "Night"))
-                df.drop("Temporal")
+                    df = df.drop("Temporal")
                 return df
             
             
