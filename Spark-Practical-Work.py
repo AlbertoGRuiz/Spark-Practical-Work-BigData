@@ -1,15 +1,10 @@
 # Import libraries
-from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DateType, TimestampType
-from pyspark.sql.functions import endswith, when, lit, col, length, concat_ws, substring, avg, desc, date_format, expr, format_string
-from pyspark.ml import Pipeline
-from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
+from pyspark.sql.types import StructType, StringType, IntegerType
+from pyspark.sql.functions import expr, when, col, concat_ws, format_string
 from pyspark.ml.evaluation import RegressionEvaluator
-from pyspark.ml.linalg import SparseVector
-from pyspark.ml.feature import Imputer, StringIndexer, OneHotEncoder, VectorAssembler, Normalizer, UnivariateFeatureSelector
-from pyspark.ml.regression import LinearRegression, GeneralizedLinearRegression, DecisionTreeRegressor, RandomForestRegressor, GBTRegressor
-    
+from pyspark.ml.feature import Imputer, StringIndexer, VectorAssembler
+from pyspark.ml.regression import LinearRegression
 import sys
 
 
@@ -29,8 +24,10 @@ def main():
     develop, however, should be able to work with any subset of this dataset, and not be limited to a
     specific piece.
     '''
+    
+    
     def create_df(number = 10):
-        def get_csv_path(csv_path = ["drive/MyDrive/Pyspark/practical work/data/1987.csv"]):
+        def get_csv_path(csv_path = ["dataverse_files/year-csv/1987.csv"]):
             # Example of input arguments
             # (["dataverse_files/year-csv/1987.csv","dataverse_files/year-csv/1988.csv","dataverse_files/year-csv/1989.csv" \
             #,"dataverse_files/year-csv/1990.csv","dataverse_files/year-csv/1991.csv","dataverse_files/year-csv/1992.csv" \
@@ -101,7 +98,6 @@ def main():
     df, session = create_df(10)
     
     
-
     '''
     2.-Forbidden variables
      The dataset consists of a single table with 29 columns. Some of these columns must not be
@@ -131,7 +127,8 @@ def main():
       - The schema of the dataframe is updated.
       
      '''
-
+     
+     
     def initial_preprocessing(df, session, number = 10):
         def remove_forbidden_variables(df, number = 10):
             df = df.drop("ArrTime") \
@@ -191,13 +188,13 @@ def main():
                 return df
             
             def convert_to_time(df, list_colums_time = ["DepTime", "CRSDepTime", "CRSArrTime"]):
-                df = df.withColumn("Time", format_string("%02d:%02d", (col("DepTime") / 100).cast("int"), (col("DepTime") % 100).cast("int")))
+                df = df.withColumn("Temporal", format_string("%02d:%02d", (col("DepTime") / 100).cast("int"), (col("DepTime") % 100).cast("int")))
                 for colum in list_colums_time:
-                    df = df.withColumn(colum, when((col("Time") > "06:00") & (col("Time") < "12:00") & (col("Time") >= "05:00") , "Morning")
-                                .when((col("Time") > "12:00") & (col("Time") < "18:00"), "Afternoon")
-                                .when((col("Time") > "17:00") & (col("Time") < "00:00"), "Evening")
-                                .when((col("Time") > "17:00") & (col("Time") < "05:00"), "Night"))
-                df.drop("Time")
+                    df = df.withColumn(colum, when((col("Temporal") > "06:00") & (col("Temporal") < "12:00") & (col("Temporal") >= "05:00") , "Morning")
+                                .when((col("Temporal") > "12:00") & (col("Temporal") < "18:00"), "Afternoon")
+                                .when((col("Temporal") > "17:00") & (col("Temporal") < "00:00"), "Evening")
+                                .when((col("Temporal") > "17:00") & (col("Temporal") < "05:00"), "Night"))
+                df.drop("Temporal")
                 return df
             
             
@@ -239,6 +236,8 @@ def main():
         return df
     
     df = initial_preprocessing(df, session,  40)    
+    
+    
     '''
     3.-Allowed variables
     Any other variable present in the dataset, and not included in the previous list, can be used for
@@ -342,7 +341,6 @@ def main():
           return predictions, fitted_lr
 
         def evaluate_model(predicted_values,target_var=target_var):
-          # Evaluate the model
           evaluator = RegressionEvaluator(labelCol=target_var, predictionCol="prediction", metricName="rmse")
           rmse = evaluator.evaluate(predicted_values)
 
@@ -356,28 +354,17 @@ def main():
         rmse = evaluate_model(predicted_values = predictions)
 
         return predictions, fitted_model, rmse
+    
+    
     '''
     Default target variable is ArrDelay. As data has already been processed,
     the rest of the columns serve as input.
     String columns are fed to the model indexed to avoid errors.
     '''
 
-    predicted_arr_delays, model, rmse = create_model_and_predict(df, number = 10, target_var = "ArrDelay_imputed")
+    '''predicted_arr_delays, model, rmse =''' 
+    create_model_and_predict(df, number = 10, target_var = "ArrDelay_imputed")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-    
 if __name__ == "__main__":
     main()
-
