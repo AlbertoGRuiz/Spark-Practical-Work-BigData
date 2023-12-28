@@ -41,7 +41,7 @@ def main():
             print(csv_path1)
             if(len(csv_path1) == 0):
                 print("No CSV file imput arguments (arg1,arg2,...,argn)")
-                print("Using default CSV file: drive/MyDrive/Pyspark/practical work/data/1987.csv")
+                print("Using default CSV file: dataverse_files/year-csv/1987.csv")
                 return csv_path
             return csv_path
         
@@ -365,6 +365,7 @@ def main():
     '''predicted_arr_delays, model, rmse =''' 
     create_model_and_predict(df, number = 10, target_var = "ArrDelay_imputed")
 
+    session.stop()
 
 if __name__ == "__main__":
     main()
