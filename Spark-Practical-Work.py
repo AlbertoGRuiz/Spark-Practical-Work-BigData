@@ -352,7 +352,8 @@ def main():
         
         data_train, data_test = prepare_data(df, number=number, target_var=target_var)
         print("<<DATA PREPARED>>")
-        df.show(number, truncate=False)
+        data_train.show(number, truncate=False)
+        data_test.show(number, truncate=False)
         predictions, fitted_model = try_model(target_var, data_train, data_test)
         rmse = evaluate_model(predicted_values = predictions)
 
