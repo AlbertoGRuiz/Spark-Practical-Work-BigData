@@ -312,12 +312,12 @@ def main():
           print("<<PREPARING THE DATA>>")
           print("<<<STEP 0: TRAIN TEST SPLIT>>>")
           data_train, data_test = split(df)
-          print("<<<STEP 1: INDEX STRING VARIABLES>>")
-          data_train = index_data(data_train)
-          data_test = index_data(data_test)
-          print("<<<STEP 2: IMPUTE NULL VALUES>>>")
+          print("<<<STEP 1: IMPUTE NULL VALUES>>>")
           data_train = impute_data(data_train)
           data_test = impute_data(data_test)
+          print("<<<STEP 2: INDEX STRING VARIABLES>>")
+          data_train = index_data(data_train)
+          data_test = index_data(data_test)
           print("<<STEP 3: FINALIZE AND RETURN>>")
           data_train = finalize_data(data_train)
           data_test = finalize_data(data_test)
@@ -351,6 +351,8 @@ def main():
         
         
         data_train, data_test = prepare_data(df, number=number, target_var=target_var)
+        print("<<DATA PREPARED>>")
+        df.show(number, truncate=False)
         predictions, fitted_model = try_model(target_var, data_train, data_test)
         rmse = evaluate_model(predicted_values = predictions)
 
