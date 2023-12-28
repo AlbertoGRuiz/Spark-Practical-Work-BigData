@@ -272,7 +272,7 @@ def main():
 
             return train_data, test_data
           
-          def index_data(df, string_columns = ["Time","Date","DayOfWeek", "CRSArrTime","CRSDepTime","UniqueCarrier","Origin", "Dest"]):
+          def index_data(df, string_columns = ["Date","DayOfWeek", "CRSArrTime","CRSDepTime","UniqueCarrier","Origin", "Dest"]):
               for column in string_columns:
                 indexer = StringIndexer(inputCol=column, outputCol=column+"_indexed", handleInvalid="skip")
                 df = indexer.fit(df).transform(df)
