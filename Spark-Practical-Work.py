@@ -43,7 +43,8 @@ def main():
                 print("No CSV file imput arguments (arg1,arg2,...,argn)")
                 print("Using default CSV file: dataverse_files/year-csv/1987.csv")
                 return csv_path
-            return csv_path
+            else:
+                return csv_path1
         
         def load_csv(spark, schema, csv_path):
             df = spark.read.options(header=True, nanValue="NA", emptyValue="") \
