@@ -26,7 +26,7 @@ The basic problem of this exercise is to create a model capable of predicting th
 
 For this exercise, students will use data published by the US Department of Transportation. This data can be downloaded from the following URL:
 
-[Dataset URL](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/HG7NV)
+[Dataset URL](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/HG7NV7)
 
 The dataset is divided into several independent files, to make downloading easier. You do not need to download and use the entire dataset. A small piece should be sufficient, one that fits in your development environment and does not take too long to process. The Spark application you develop, however, should be able to work with any subset of this dataset and not be limited to a specific piece.
 
